@@ -31,3 +31,9 @@ jobs:
 
       - name: Test with pytest
         run: uv run pytest
+
+      - name: Typecheck with mypy
+        run: uv run mypy app tests
+
+      - name: Check compilation
+        run: uv run python -m compileall app tests
