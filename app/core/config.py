@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     project_name: str = "api"
     database_url: str = ""
     database_echo: bool = False
-    auto_create_tables: bool = False
+    llm_provider: str = "fake"
 
 
 settings = Settings()

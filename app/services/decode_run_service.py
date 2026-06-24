@@ -6,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.decode_run import DecodeRun
 
+# Non-final internal state used while a run is in progress. Final RunDTO statuses
+# are RUN_STATUS_SUCCEEDED and RUN_STATUS_FAILED per the briefs contract.
 RUN_STATUS_PENDING = "pending"
-RUN_STATUS_SUCCESS = "success"
-RUN_STATUS_FAILURE = "failure"
+RUN_STATUS_SUCCEEDED = "succeeded"
+RUN_STATUS_FAILED = "failed"
 
 
 async def create_decode_run(
@@ -40,7 +42,7 @@ async def save_success(
         msg = f"DecodeRun {run_id} not found"
         raise ValueError(msg)
 
-    run.status = RUN_STATUS_SUCCESS
+    run.status = RUN_STATUS_SUCCEEDED
     run.structured_result = structured_result
     run.raw_provider_output = raw_provider_output
     run.updated_at = datetime.now(UTC)
@@ -62,7 +64,7 @@ async def save_failure(
         msg = f"DecodeRun {run_id} not found"
         raise ValueError(msg)
 
-    run.status = RUN_STATUS_FAILURE
+    run.status = RUN_STATUS_FAILED
     run.error_code = error_code
     run.error_message = error_message
     run.updated_at = datetime.now(UTC)
