@@ -12,6 +12,8 @@ RUN_STATUS_PENDING = "pending"
 RUN_STATUS_SUCCEEDED = "succeeded"
 RUN_STATUS_FAILED = "failed"
 
+_TERMINAL_STATUSES = {RUN_STATUS_SUCCEEDED, RUN_STATUS_FAILED}
+
 
 async def create_decode_run(
     session: AsyncSession,
@@ -41,6 +43,9 @@ async def save_success(
     if run is None:
         msg = f"DecodeRun {run_id} not found"
         raise ValueError(msg)
+    if run.status in _TERMINAL_STATUSES:
+        msg = f"DecodeRun {run_id} is already terminal (status={run.status})"
+        raise ValueError(msg)
 
     run.status = RUN_STATUS_SUCCEEDED
     run.structured_result = structured_result
@@ -62,6 +67,9 @@ async def save_failure(
     run = await session.get(DecodeRun, run_id)
     if run is None:
         msg = f"DecodeRun {run_id} not found"
+        raise ValueError(msg)
+    if run.status in _TERMINAL_STATUSES:
+        msg = f"DecodeRun {run_id} is already terminal (status={run.status})"
         raise ValueError(msg)
 
     run.status = RUN_STATUS_FAILED

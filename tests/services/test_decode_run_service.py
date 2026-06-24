@@ -118,6 +118,28 @@ async def test_save_failure_missing_run_raises() -> None:
         await save_failure(session, "missing", "E_CODE", "msg")
 
 
+@pytest.mark.asyncio
+async def test_save_success_rejects_terminal_run() -> None:
+    """save_success should raise when the run is already terminal."""
+    session = _async_session_mock()
+    existing = DecodeRun(status=RUN_STATUS_SUCCEEDED, input_text="input")
+    session.get.return_value = existing
+
+    with pytest.raises(ValueError, match="already terminal"):
+        await save_success(session, existing.run_id, {"summary": "x"}, "raw")
+
+
+@pytest.mark.asyncio
+async def test_save_failure_rejects_terminal_run() -> None:
+    """save_failure should raise when the run is already terminal."""
+    session = _async_session_mock()
+    existing = DecodeRun(status=RUN_STATUS_FAILED, input_text="input")
+    session.get.return_value = existing
+
+    with pytest.raises(ValueError, match="already terminal"):
+        await save_failure(session, existing.run_id, "E_CODE", "msg")
+
+
 @pytest_asyncio.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     """Provide an async SQLModel/SQLite session with tables created via init_db."""
@@ -156,25 +178,29 @@ async def test_get_db_yields_async_session() -> None:
     settings.database_url = "sqlite+aiosqlite:///:memory:"
     app.core.db._engine = None
     app.core.db._session_maker = None
-    await init_db()
-
-    db_gen = get_db()
-    session = await anext(db_gen)
-    assert isinstance(session, AsyncSession)
-
-    result = await session.execute(
-        text("SELECT name FROM sqlite_master WHERE type='table' AND name='decode_runs'")
-    )
-    assert result.scalar_one() == "decode_runs"
-
     try:
-        await anext(db_gen)
-    except StopAsyncIteration:
-        pass
+        await init_db()
 
-    settings.database_url = original_url
-    app.core.db._engine = None
-    app.core.db._session_maker = None
+        db_gen = get_db()
+        session = await anext(db_gen)
+        assert isinstance(session, AsyncSession)
+
+        result = await session.execute(
+            text(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='decode_runs'"
+            )
+        )
+        assert result.scalar_one() == "decode_runs"
+
+        try:
+            await anext(db_gen)
+        except StopAsyncIteration:
+            pass
+    finally:
+        settings.database_url = original_url
+        app.core.db._engine = None
+        app.core.db._session_maker = None
 
 
 @pytest.mark.asyncio
