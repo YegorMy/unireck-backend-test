@@ -3,18 +3,24 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import require_auth
 from app.core.db import get_db
 from app.core.exceptions import APIError
 from app.models.decode_run import DecodeRun
 from app.schemas.brief_decode import BriefDecodeRequest, BriefDecodeResult, RunDTO
-from app.services.decode_service import decode_brief
+from app.services.decode_service import DecodeFailedError, decode_brief
 
-router = APIRouter(prefix="/v1/briefs", tags=["briefs"])
+router = APIRouter(
+    prefix="/v1/briefs",
+    tags=["briefs"],
+    dependencies=[Depends(require_auth)],
+)
 
 
 def _run_to_dto(run: DecodeRun) -> RunDTO:
     """Convert a terminal ``DecodeRun`` into its public ``RunDTO`` representation."""
-    assert run.updated_at is not None, "terminal runs must have an updated_at timestamp"
+    if run.updated_at is None:
+        raise ValueError("terminal run missing updated_at timestamp")
     structured_result = (
         BriefDecodeResult.model_validate(run.structured_result)
         if run.structured_result is not None
@@ -39,7 +45,20 @@ async def decode(
     session: AsyncSession = Depends(get_db),
 ) -> RunDTO:
     """Decode a raw brief into a structured result."""
-    run = await decode_brief(session, request.brief_text)
+    try:
+        run = await decode_brief(session, request.brief_text)
+    except DecodeFailedError as exc:
+        status_code = (
+            status.HTTP_502_BAD_GATEWAY
+            if exc.error_code == "PROVIDER_ERROR"
+            else status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        raise APIError(
+            status_code=status_code,
+            error_code=exc.error_code,
+            message=exc.message,
+            run_id=exc.run_id,
+        ) from exc
     return _run_to_dto(run)
 
 

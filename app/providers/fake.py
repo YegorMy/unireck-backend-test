@@ -4,7 +4,7 @@ import json
 from typing import Literal, cast
 
 from app.core.config import settings
-from app.providers.base import LLMProvider
+from app.providers.base import LLMProvider, ProviderError
 
 FakeProviderMode = Literal[
     "valid",
@@ -15,7 +15,7 @@ FakeProviderMode = Literal[
 ]
 
 
-class FakeProviderError(Exception):
+class FakeProviderError(ProviderError):
     """Raised when ``FakeProvider`` is configured to simulate a provider error."""
 
 

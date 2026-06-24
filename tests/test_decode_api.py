@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import app.core.db
+from app.core.auth import require_auth
 from app.core.config import settings
 from app.core.db import get_db, init_db
 from app.main import app as fastapi_app
@@ -20,6 +21,7 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     settings.database_url = "sqlite+aiosqlite:///:memory:"
     app.core.db._engine = None
     app.core.db._session_maker = None
+    fastapi_app.dependency_overrides[require_auth] = lambda: None
 
     await init_db()
     session_maker = async_sessionmaker(
@@ -59,7 +61,7 @@ def test_post_decode_malformed_output_returns_failed_run(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Invalid provider output should still produce a failed RunDTO."""
+    """Malformed provider output returns a persisted failed run in an ErrorEnvelope."""
     monkeypatch.setattr(settings, "fake_provider_mode", "malformed_json")
 
     with TestClient(fastapi_app) as client:
@@ -68,18 +70,18 @@ def test_post_decode_malformed_output_returns_failed_run(
             json={"brief_text": "Build a thing."},
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 422
     data = response.json()
-    assert data["status"] == "failed"
     assert data["error_code"] == "MALFORMED_OUTPUT"
-    assert data["error_message"]
+    assert data["message"]
+    assert data["run_id"]
 
 
 def test_post_decode_schema_validation_returns_failed_run(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Provider output that fails schema validation should produce a failed RunDTO."""
+    """Missing-field provider output returns a persisted failed run envelope."""
     monkeypatch.setattr(settings, "fake_provider_mode", "missing_field")
 
     with TestClient(fastapi_app) as client:
@@ -88,18 +90,47 @@ def test_post_decode_schema_validation_returns_failed_run(
             json={"brief_text": "Build a thing."},
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 422
     data = response.json()
-    assert data["status"] == "failed"
     assert data["error_code"] == "SCHEMA_VALIDATION"
-    assert data["error_message"]
+    assert data["message"]
+    assert data["run_id"]
+
+
+def test_post_decode_invalid_severity_returns_failed_run(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Invalid severity value returns a persisted failed run in an ErrorEnvelope."""
+    monkeypatch.setattr(settings, "fake_provider_mode", "invalid_severity")
+
+    with TestClient(fastapi_app) as client:
+        response = client.post(
+            "/v1/briefs/decode",
+            json={"brief_text": "Build a thing."},
+        )
+
+    assert response.status_code == 422
+    data = response.json()
+    assert data["error_code"] == "SCHEMA_VALIDATION"
+    assert data["message"]
+    assert data["run_id"]
+
+    # Verify the failure was persisted and the raw output is available via GET.
+    run_id = data["run_id"]
+    get_response = client.get(f"/v1/briefs/runs/{run_id}")
+    assert get_response.status_code == 200
+    run = get_response.json()
+    assert run["status"] == "failed"
+    assert run["error_code"] == "SCHEMA_VALIDATION"
+    assert run["raw_provider_output"]
 
 
 def test_post_decode_provider_error_returns_failed_run(
     db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A provider exception should be persisted as a failed RunDTO."""
+    """A provider exception returns a persisted failed run in an ErrorEnvelope."""
     monkeypatch.setattr(settings, "fake_provider_mode", "provider_error")
 
     with TestClient(fastapi_app) as client:
@@ -108,10 +139,11 @@ def test_post_decode_provider_error_returns_failed_run(
             json={"brief_text": "Build a thing."},
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 502
     data = response.json()
-    assert data["status"] == "failed"
     assert data["error_code"] == "PROVIDER_ERROR"
+    assert data["message"]
+    assert data["run_id"]
 
 
 def test_get_run_returns_run_dto(db_session: AsyncSession) -> None:
@@ -142,24 +174,24 @@ def test_get_run_not_found(db_session: AsyncSession) -> None:
 
 
 def test_cors_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
-    """CORS preflight requests receive the configured allow-origin header."""
-    monkeypatch.setattr(settings, "cors_allow_origins", "http://test.local")
-
+    """CORS preflight requests receive the chrome-extension allow-origin header."""
     import importlib
 
     from app import main as main_module
 
     importlib.reload(main_module)
+    main_module.app.dependency_overrides[require_auth] = lambda: None
 
+    origin = "chrome-extension://test-extension-id"
     with TestClient(main_module.app) as client:
         response = client.options(
             "/v1/briefs/decode",
             headers={
-                "Origin": "http://test.local",
+                "Origin": origin,
                 "Access-Control-Request-Method": "POST",
                 "Access-Control-Request-Headers": "Content-Type",
             },
         )
 
     assert response.status_code == 200
-    assert response.headers.get("access-control-allow-origin") == "http://test.local"
+    assert response.headers.get("access-control-allow-origin") == origin

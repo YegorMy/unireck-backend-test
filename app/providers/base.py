@@ -3,6 +3,10 @@
 from abc import ABC, abstractmethod
 
 
+class ProviderError(Exception):
+    """Raised when an LLM provider fails to produce a response."""
+
+
 class LLMProvider(ABC):
     """Abstract interface for brief-decoding LLM providers."""
 
