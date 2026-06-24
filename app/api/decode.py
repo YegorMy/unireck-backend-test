@@ -48,11 +48,12 @@ async def decode(
     try:
         run = await decode_brief(session, request.brief_text)
     except DecodeFailedError as exc:
-        status_code = (
-            status.HTTP_502_BAD_GATEWAY
-            if exc.error_code == "PROVIDER_ERROR"
-            else status.HTTP_422_UNPROCESSABLE_ENTITY
-        )
+        if exc.error_code == "PROVIDER_ERROR":
+            status_code = status.HTTP_502_BAD_GATEWAY
+        elif exc.error_code == "UNEXPECTED_ERROR":
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        else:
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         raise APIError(
             status_code=status_code,
             error_code=exc.error_code,

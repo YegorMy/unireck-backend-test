@@ -210,6 +210,25 @@ def test_post_decode_invalid_api_key_returns_401(
     assert response.json()["detail"] == "Invalid or missing API key"
 
 
+def test_post_decode_empty_api_key_returns_401(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty X-API-Key header must not bypass authentication."""
+    monkeypatch.setattr(settings, "api_key", "test-secret-key")
+    fastapi_app.dependency_overrides.pop(require_auth, None)
+
+    with TestClient(fastapi_app) as client:
+        response = client.post(
+            "/v1/briefs/decode",
+            json={"brief_text": "Build a thing."},
+            headers={"X-API-Key": ""},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid or missing API key"
+
+
 def test_cors_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
     """CORS preflight requests receive the chrome-extension allow-origin header."""
     import importlib

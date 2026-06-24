@@ -17,7 +17,13 @@ async def require_auth(x_api_key: str | None = Header(default=None)) -> None:
         HTTPException: 401 if the supplied key does not match the configured
             ``API_API_KEY`` value.
     """
-    if x_api_key is None or not hmac.compare_digest(x_api_key, settings.api_key):
+    configured_key = settings.api_key
+    if not configured_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="API key not configured",
+        )
+    if not x_api_key or not hmac.compare_digest(x_api_key, configured_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API key",
