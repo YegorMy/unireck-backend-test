@@ -234,7 +234,13 @@ def test_cors_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
     import importlib
 
     from app import main as main_module
+    from app.core.config import settings
 
+    monkeypatch.setattr(
+        settings,
+        "cors_allow_origin_regex",
+        r"chrome-extension://.*",
+    )
     importlib.reload(main_module)
     main_module.app.dependency_overrides[require_auth] = lambda: None
 

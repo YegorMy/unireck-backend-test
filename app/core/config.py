@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     llm_provider: str = "fake"
     fake_provider_mode: str = "valid"
     api_key: str = ""
-    cors_allow_origin_regex: str = r"chrome-extension://.*"
+    cors_allow_origin_regex: str = ""
     cors_allow_methods: list[str] = ["GET", "POST", "OPTIONS"]
     cors_allow_headers: list[str] = ["Content-Type", "X-API-Key"]
     cors_allow_credentials: bool = False
