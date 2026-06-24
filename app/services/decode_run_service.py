@@ -15,6 +15,43 @@ RUN_STATUS_FAILED = "failed"
 _TERMINAL_STATUSES = {RUN_STATUS_SUCCEEDED, RUN_STATUS_FAILED}
 
 
+class RunNotFoundError(Exception):
+    """Raised when a requested decode run does not exist."""
+
+
+class RunPendingError(Exception):
+    """Raised when a requested decode run has not reached a terminal status."""
+
+    def __init__(self, run_id: str) -> None:
+        super().__init__(f"Run {run_id} is still pending")
+        self.run_id = run_id
+
+
+async def get_terminal_run(
+    session: AsyncSession,
+    run_id: str,
+) -> DecodeRun:
+    """Retrieve a decode run and verify it is in a terminal status.
+
+    Args:
+        session: Database session for persistence.
+        run_id: Public run identifier.
+
+    Returns:
+        The persisted ``DecodeRun``.
+
+    Raises:
+        RunNotFoundError: If no run exists for ``run_id``.
+        RunPendingError: If the run exists but is not yet terminal.
+    """
+    run = await session.get(DecodeRun, run_id)
+    if run is None:
+        raise RunNotFoundError
+    if run.status not in _TERMINAL_STATUSES:
+        raise RunPendingError(run.run_id)
+    return run
+
+
 async def create_decode_run(
     session: AsyncSession,
     input_text: str,

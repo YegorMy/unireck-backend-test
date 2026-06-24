@@ -63,7 +63,7 @@ async def catch_all_exception_handler(
     logger.exception("Unhandled exception: %s", exc)
     return _build_error_response(
         500,
-        "PROVIDER_ERROR",
+        "UNEXPECTED_ERROR",
         "An unexpected error occurred",
         None,
     )
