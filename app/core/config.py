@@ -9,3 +9,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="API_")
 
     project_name: str = "api"
+    database_url: str = ""
+    database_echo: bool = False
+    llm_provider: str = "fake"
+
+
+settings = Settings()
