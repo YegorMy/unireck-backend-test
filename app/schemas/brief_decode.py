@@ -36,7 +36,7 @@ class RunDTO(BaseModel):
     """Public representation of a decode run."""
 
     run_id: str
-    status: str
+    status: Literal["succeeded", "failed"]
     input_text: str
     structured_result: BriefDecodeResult | None
     raw_provider_output: str | None
@@ -49,9 +49,9 @@ class RunDTO(BaseModel):
 class ErrorEnvelope(BaseModel):
     """Safe error response returned to clients."""
 
-    error_code: str
+    error_code: Literal["MALFORMED_OUTPUT", "SCHEMA_VALIDATION", "PROVIDER_ERROR"]
     message: str
-    run_id: str
+    run_id: str | None = None
 
 
 class StructuredOutputError(Exception):

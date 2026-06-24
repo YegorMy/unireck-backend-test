@@ -120,3 +120,40 @@ def test_run_dto_shape() -> None:
     assert dto.run_id == "run-123"
     assert dto.structured_result is not None
     assert dto.structured_result.summary == "Build a landing page"
+
+
+def test_run_dto_rejects_invalid_status() -> None:
+    """RunDTO.status is constrained to the agreed terminal statuses."""
+    data = _valid_result_dict()
+    payload = {
+        "run_id": "run-123",
+        "status": "pending",
+        "input_text": "Build a landing page",
+        "structured_result": data,
+        "raw_provider_output": "{}",
+        "error_code": None,
+        "error_message": None,
+        "created_at": "2026-01-01T00:00:00Z",
+        "updated_at": None,
+    }
+    with pytest.raises(ValueError):
+        RunDTO.model_validate(payload)
+
+
+def test_error_envelope_run_id_optional() -> None:
+    """ErrorEnvelope.run_id is nullable and may be omitted."""
+    envelope = ErrorEnvelope(
+        error_code="SCHEMA_VALIDATION",
+        message="Schema validation failed",
+    )
+    assert envelope.run_id is None
+
+
+def test_error_envelope_rejects_invalid_error_code() -> None:
+    """ErrorEnvelope.error_code is constrained to the agreed codes."""
+    with pytest.raises(ValueError):
+        ErrorEnvelope.model_validate({
+            "error_code": "UNKNOWN_CODE",
+            "message": "Something went wrong",
+            "run_id": "run-123",
+        })
