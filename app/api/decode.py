@@ -8,6 +8,11 @@ from app.core.db import get_db
 from app.core.exceptions import APIError
 from app.models.decode_run import DecodeRun
 from app.schemas.brief_decode import BriefDecodeRequest, BriefDecodeResult, RunDTO
+from app.services.decode_run_service import (
+    RunNotFoundError,
+    RunPendingError,
+    get_terminal_run,
+)
 from app.services.decode_service import DecodeFailedError, decode_brief
 
 router = APIRouter(
@@ -48,11 +53,12 @@ async def decode(
     try:
         run = await decode_brief(session, request.brief_text)
     except DecodeFailedError as exc:
-        status_code = (
-            status.HTTP_502_BAD_GATEWAY
-            if exc.error_code == "PROVIDER_ERROR"
-            else status.HTTP_422_UNPROCESSABLE_ENTITY
-        )
+        if exc.error_code == "PROVIDER_ERROR":
+            status_code = status.HTTP_502_BAD_GATEWAY
+        elif exc.error_code == "UNEXPECTED_ERROR":
+            status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        else:
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
         raise APIError(
             status_code=status_code,
             error_code=exc.error_code,
@@ -68,18 +74,19 @@ async def get_run(
     session: AsyncSession = Depends(get_db),
 ) -> RunDTO:
     """Retrieve a previously created decode run by ID."""
-    run = await session.get(DecodeRun, run_id)
-    if run is None:
+    try:
+        run = await get_terminal_run(session, run_id)
+    except RunNotFoundError as exc:
         raise APIError(
             status_code=status.HTTP_404_NOT_FOUND,
             error_code="RUN_NOT_FOUND",
             message=f"Run {run_id} not found",
-        )
-    if run.status not in {"succeeded", "failed"}:
+        ) from exc
+    except RunPendingError as exc:
         raise APIError(
             status_code=status.HTTP_409_CONFLICT,
             error_code="RUN_PENDING",
             message=f"Run {run_id} is still pending",
-            run_id=run.run_id,
-        )
+            run_id=exc.run_id,
+        ) from exc
     return _run_to_dto(run)
