@@ -71,6 +71,15 @@ async def decode_brief(session: AsyncSession, brief_text: str) -> DecodeRun:
             "PROVIDER_ERROR",
             "LLM provider request failed",
         ) from exc
+    except Exception:
+        logger.exception("Unexpected error during decode for run %s", run.run_id)
+        run = await save_failure(
+            session,
+            run.run_id,
+            "PROVIDER_ERROR",
+            "Unexpected error during decode",
+        )
+        raise
     else:
         run = await save_success(
             session,
