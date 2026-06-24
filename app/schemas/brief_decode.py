@@ -43,13 +43,19 @@ class RunDTO(BaseModel):
     error_code: str | None
     error_message: str | None
     created_at: str
-    updated_at: str | None
+    updated_at: str
 
 
 class ErrorEnvelope(BaseModel):
     """Safe error response returned to clients."""
 
-    error_code: Literal["MALFORMED_OUTPUT", "SCHEMA_VALIDATION", "PROVIDER_ERROR"]
+    error_code: Literal[
+        "MALFORMED_OUTPUT",
+        "SCHEMA_VALIDATION",
+        "PROVIDER_ERROR",
+        "RUN_NOT_FOUND",
+        "RUN_PENDING",
+    ]
     message: str
     run_id: str | None = None
 

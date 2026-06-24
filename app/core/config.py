@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     database_echo: bool = False
     llm_provider: str = "fake"
     fake_provider_mode: str = "valid"
+    cors_allow_origins: str = ""
 
 
 settings = Settings()

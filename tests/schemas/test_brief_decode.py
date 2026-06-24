@@ -115,7 +115,7 @@ def test_run_dto_shape() -> None:
         error_code=None,
         error_message=None,
         created_at="2026-01-01T00:00:00Z",
-        updated_at=None,
+        updated_at="2026-01-01T00:00:00Z",
     )
     assert dto.run_id == "run-123"
     assert dto.structured_result is not None
