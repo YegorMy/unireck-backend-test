@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from app.core.config import settings
 from app.providers import FakeProvider, get_llm_provider
 from app.providers.base import LLMProvider
 from app.providers.fake import FakeProviderError
@@ -45,7 +46,7 @@ class TestFakeProvider:
     async def test_mode_read_from_environment(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv("FAKE_PROVIDER_MODE", "malformed_json")
+        monkeypatch.setattr(settings, "fake_provider_mode", "malformed_json")
         provider = FakeProvider()
         raw = await provider.decode("brief")
         with pytest.raises(StructuredOutputError, match="not valid JSON"):
@@ -61,24 +62,27 @@ class TestFakeProvider:
 
 
 class TestProviderFactory:
-    def test_default_returns_fake_provider(self) -> None:
+    def test_default_returns_fake_provider(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        monkeypatch.delenv("API_LLM_PROVIDER", raising=False)
+        monkeypatch.setattr(settings, "llm_provider", "fake")
         provider = get_llm_provider()
         assert isinstance(provider, FakeProvider)
 
-    def test_fake_provider_mode_override(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        monkeypatch.setenv("LLM_PROVIDER", "fake")
-        monkeypatch.setenv("FAKE_PROVIDER_MODE", "provider_error")
+    def test_fake_provider_mode_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(settings, "llm_provider", "fake")
+        monkeypatch.setattr(settings, "fake_provider_mode", "provider_error")
         provider = get_llm_provider()
         assert isinstance(provider, FakeProvider)
 
     def test_unsupported_provider(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("LLM_PROVIDER", "unknown")
+        monkeypatch.setattr(settings, "llm_provider", "unknown")
         with pytest.raises(ValueError, match="Unsupported LLM_PROVIDER"):
             get_llm_provider()
 
     def test_openai_not_implemented(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("LLM_PROVIDER", "openai")
+        monkeypatch.setattr(settings, "llm_provider", "openai")
         with pytest.raises(NotImplementedError, match="not implemented yet"):
             get_llm_provider()

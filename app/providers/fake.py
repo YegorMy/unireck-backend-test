@@ -1,9 +1,9 @@
 """Steerable fake LLM provider for tests and local development."""
 
 import json
-import os
 from typing import Literal, cast
 
+from app.core.config import settings
 from app.providers.base import LLMProvider
 
 FakeProviderMode = Literal[
@@ -14,8 +14,6 @@ FakeProviderMode = Literal[
     "provider_error",
 ]
 
-_ENV_MODE = "FAKE_PROVIDER_MODE"
-
 
 class FakeProviderError(Exception):
     """Raised when ``FakeProvider`` is configured to simulate a provider error."""
@@ -24,8 +22,8 @@ class FakeProviderError(Exception):
 class FakeProvider(LLMProvider):
     """Steerable fake provider that returns predetermined outputs.
 
-    The mode can be set via the constructor or the ``FAKE_PROVIDER_MODE``
-    environment variable. Constructor value takes precedence.
+    The mode can be set via the constructor or ``settings.fake_provider_mode``
+    (default ``valid``). Constructor value takes precedence.
     """
 
     _VALID_OUTPUT = {
@@ -53,7 +51,7 @@ class FakeProvider(LLMProvider):
     }
 
     def __init__(self, mode: FakeProviderMode | None = None) -> None:
-        resolved = mode or os.getenv(_ENV_MODE, "valid")
+        resolved = mode or settings.fake_provider_mode
         if resolved not in self._MODES:
             msg = f"Invalid fake provider mode: {resolved!r}"
             raise ValueError(msg)

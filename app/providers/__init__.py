@@ -1,8 +1,8 @@
 """Provider factory and public exports."""
 
-import os
 from typing import Literal
 
+from app.core.config import settings
 from app.providers.base import LLMProvider
 from app.providers.fake import FakeProvider
 
@@ -10,12 +10,11 @@ ProviderName = Literal["fake", "openai"]
 
 
 def get_llm_provider() -> LLMProvider:
-    """Return an LLM provider instance based on environment configuration.
+    """Return an LLM provider instance based on application settings.
 
-    Reads ``LLM_PROVIDER`` (default ``fake``) and ``FAKE_PROVIDER_MODE``
-    (default ``valid``).
+    Uses ``settings.llm_provider`` (default ``fake``).
     """
-    name = os.getenv("LLM_PROVIDER", "fake")
+    name = settings.llm_provider
     if name == "fake":
         return FakeProvider()
     if name == "openai":

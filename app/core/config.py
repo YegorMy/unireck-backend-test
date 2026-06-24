@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     database_echo: bool = False
     llm_provider: str = "fake"
+    fake_provider_mode: str = "valid"
 
 
 settings = Settings()
