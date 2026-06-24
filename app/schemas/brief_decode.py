@@ -55,6 +55,7 @@ class ErrorEnvelope(BaseModel):
         "PROVIDER_ERROR",
         "RUN_NOT_FOUND",
         "RUN_PENDING",
+        "UNEXPECTED_ERROR",
     ]
     message: str
     run_id: str | None = None
