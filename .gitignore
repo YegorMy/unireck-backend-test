@@ -1,5 +1,8 @@
 .env
 .env.*
+!.env.example
+.hive/
+.hive-worktrees/
 .venv/
 __pycache__/
 *.py[cod]
