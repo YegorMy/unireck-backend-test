@@ -18,7 +18,11 @@ from app.main import app as fastapi_app
 async def db_session() -> AsyncIterator[AsyncSession]:
     """Provide a fresh in-memory SQLite session for a test."""
     original_url = settings.database_url
+    original_provider = settings.llm_provider
     settings.database_url = "sqlite+aiosqlite:///:memory:"
+    # Pin the fake provider so these tests never depend on the ambient
+    # LLM_PROVIDER (.env) or reach the real API (TEST-03).
+    settings.llm_provider = "fake"
     app.core.db._engine = None
     app.core.db._session_maker = None
     fastapi_app.dependency_overrides[require_auth] = lambda: None
@@ -35,6 +39,7 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 
     fastapi_app.dependency_overrides.clear()
     settings.database_url = original_url
+    settings.llm_provider = original_provider
     app.core.db._engine = None
     app.core.db._session_maker = None
 
