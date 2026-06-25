@@ -15,5 +15,24 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Reach Postgres over the compose network (service name, not localhost).
+      API_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-api}:${POSTGRES_PASSWORD:-api}@postgres:5432/${POSTGRES_DB:-api}
+      # Provider + auth — override via the shell or a local .env file.
+      API_LLM_PROVIDER: ${API_LLM_PROVIDER:-fake}
+      API_FAKE_PROVIDER_MODE: ${API_FAKE_PROVIDER_MODE:-valid}
+      API_API_KEY: ${API_API_KEY:-dev-secret-change-me}
+      API_CORS_ALLOW_ORIGIN_REGEX: ${API_CORS_ALLOW_ORIGIN_REGEX:-chrome-extension://.*}
+      # Kimi/Moonshot — only used when API_LLM_PROVIDER=kimi.
+      API_KIMI_API_KEY: ${API_KIMI_API_KEY:-}
+      API_KIMI_MODEL: ${API_KIMI_MODEL:-moonshot-v1-8k}
+    ports:
+      - "8000:8000"
+
 volumes:
   postgres_data:
