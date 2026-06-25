@@ -1,18 +1,10 @@
 """Steerable fake LLM provider for tests and local development."""
 
 import json
-from typing import Literal, cast
+from typing import cast
 
-from app.core.config import settings
+from app.core.config import FakeProviderMode, settings
 from app.providers.base import LLMProvider, ProviderError
-
-FakeProviderMode = Literal[
-    "valid",
-    "malformed_json",
-    "missing_field",
-    "invalid_severity",
-    "provider_error",
-]
 
 
 class FakeProviderError(ProviderError):
@@ -57,8 +49,12 @@ class FakeProvider(LLMProvider):
             raise ValueError(msg)
         self.mode: FakeProviderMode = cast(FakeProviderMode, resolved)
 
-    async def decode(self, brief_text: str) -> str:
-        """Return a canned response according to ``self.mode``."""
+    async def complete(self, system_prompt: str, user_prompt: str) -> str:
+        """Return a canned response according to ``self.mode``.
+
+        The prompts are ignored by design: this provider is steered entirely by
+        ``self.mode`` so failure paths are deterministic and no key is needed.
+        """
         if self.mode == "valid":
             return json.dumps(self._VALID_OUTPUT)
         if self.mode == "malformed_json":

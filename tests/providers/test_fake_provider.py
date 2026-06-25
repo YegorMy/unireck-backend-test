@@ -14,7 +14,7 @@ from app.schemas.brief_decode import StructuredOutputError, validate_structured_
 class TestFakeProvider:
     async def test_valid_mode_returns_valid_json(self) -> None:
         provider = FakeProvider("valid")
-        raw = await provider.decode("brief")
+        raw = await provider.complete("system", "brief")
         parsed = json.loads(raw)
         assert parsed["summary"]
         assert parsed["goals"]
@@ -22,33 +22,33 @@ class TestFakeProvider:
 
     async def test_malformed_json_mode(self) -> None:
         provider = FakeProvider("malformed_json")
-        raw = await provider.decode("brief")
+        raw = await provider.complete("system", "brief")
         with pytest.raises(StructuredOutputError, match="not valid JSON"):
             validate_structured_output(raw)
 
     async def test_missing_field_mode(self) -> None:
         provider = FakeProvider("missing_field")
-        raw = await provider.decode("brief")
+        raw = await provider.complete("system", "brief")
         with pytest.raises(StructuredOutputError, match="Schema validation failed"):
             validate_structured_output(raw)
 
     async def test_invalid_severity_mode(self) -> None:
         provider = FakeProvider("invalid_severity")
-        raw = await provider.decode("brief")
+        raw = await provider.complete("system", "brief")
         with pytest.raises(StructuredOutputError, match="Schema validation failed"):
             validate_structured_output(raw)
 
     async def test_provider_error_mode(self) -> None:
         provider = FakeProvider("provider_error")
         with pytest.raises(FakeProviderError, match="Simulated provider error"):
-            await provider.decode("brief")
+            await provider.complete("system", "brief")
 
     async def test_mode_read_from_environment(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(settings, "fake_provider_mode", "malformed_json")
         provider = FakeProvider()
-        raw = await provider.decode("brief")
+        raw = await provider.complete("system", "brief")
         with pytest.raises(StructuredOutputError, match="not valid JSON"):
             validate_structured_output(raw)
 

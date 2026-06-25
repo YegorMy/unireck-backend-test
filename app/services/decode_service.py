@@ -13,6 +13,7 @@ from app.services.decode_run_service import (
     save_failure,
     save_success,
 )
+from app.services.prompts import build_brief_decode_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +49,10 @@ async def decode_brief(session: AsyncSession, brief_text: str) -> DecodeRun:
     """
     run = await create_decode_run(session, brief_text)
     provider = get_llm_provider()
+    system_prompt = build_brief_decode_prompt()
 
     try:
-        raw_output = await provider.decode(brief_text)
+        raw_output = await provider.complete(system_prompt, brief_text)
         structured = validate_structured_output(raw_output)
     except StructuredOutputError as exc:
         run = await save_failure(session, run.run_id, exc.error_code, exc.message)
