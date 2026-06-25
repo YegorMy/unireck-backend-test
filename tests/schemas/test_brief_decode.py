@@ -152,8 +152,10 @@ def test_error_envelope_run_id_optional() -> None:
 def test_error_envelope_rejects_invalid_error_code() -> None:
     """ErrorEnvelope.error_code is constrained to the agreed codes."""
     with pytest.raises(ValueError):
-        ErrorEnvelope.model_validate({
-            "error_code": "UNKNOWN_CODE",
-            "message": "Something went wrong",
-            "run_id": "run-123",
-        })
+        ErrorEnvelope.model_validate(
+            {
+                "error_code": "UNKNOWN_CODE",
+                "message": "Something went wrong",
+                "run_id": "run-123",
+            }
+        )
